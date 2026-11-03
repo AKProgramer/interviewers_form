@@ -29,7 +29,9 @@ module.exports = async (req, res) => {
           recommendation: c.recommendation.title,
         },
         statusOptions: c.status.options,
+        statusAuto: c.status.auto,
         recommendationOptions: c.recommendation.options,
+        taskStatuses: Object.entries(CONFIG.taskStatusColors).map(([label, color]) => ({ label, color })),
       },
     });
   } catch (err) {

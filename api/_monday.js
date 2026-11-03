@@ -10,6 +10,8 @@ const CONFIG = {
       id: 'color_mm8rrwba',
       title: 'Status',
       options: ['Reviewed – no update needed', 'Updated by interviewer'],
+      // Not chosen by the interviewer: set from whether a new meeting summary file was uploaded.
+      auto: { withFile: 'Updated by interviewer', withoutFile: 'Reviewed – no update needed' },
     },
     recommendation: {
       id: 'color_mm8r7s7g',
@@ -91,7 +93,7 @@ query ($ids: [ID!]) {
       ... on BoardRelationValue { display_value }
       ... on DateValue { date time }
     }
-    assets(column_ids: ["file_mm7y9s3g"]) { id name public_url }
+    assets(column_ids: ["file_mm7y9s3g"]) { id name file_extension file_size public_url }
   }
 }`;
 
@@ -146,7 +148,13 @@ async function loadTasks(ids) {
         description: cv(t, tc.description).text || '',
         date: date.text || '',
         comments: cv(t, tc.comments).text || '',
-        files: (t.assets || []).map((a) => ({ name: a.name, url: a.public_url })),
+        files: (t.assets || []).map((a) => ({
+          assetId: a.id,
+          name: a.name,
+          extension: a.file_extension,
+          size: a.file_size,
+          url: a.public_url,
+        })),
       });
     }
   }
@@ -156,4 +164,22 @@ async function loadTasks(ids) {
   return tasks;
 }
 
-module.exports = { CONFIG, mondayQuery, loadMainItem, loadTasks };
+// Returns the asset only if it belongs to this item's meeting summary or one of its linked tasks,
+// so /api/file can't be used to read arbitrary files from the account.
+async function findItemAsset(itemId, assetId) {
+  const item = await loadMainItem(itemId);
+  if (!item) return null;
+  const same = (f) => String(f.assetId) === String(assetId);
+
+  const own = item.fields.meetingSummaryFiles.find(same);
+  if (own) return own;
+
+  const tasks = await loadTasks(item.linkedTaskIds);
+  for (const t of tasks) {
+    const f = t.files.find(same);
+    if (f) return f;
+  }
+  return null;
+}
+
+module.exports = { CONFIG, mondayQuery, loadMainItem, loadTasks, findItemAsset };

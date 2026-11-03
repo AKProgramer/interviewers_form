@@ -9,30 +9,45 @@
 <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #edf1ee;
+    --bg: #eef2ef;
     --surface: #ffffff;
-    --ink: #1f2b29;
-    --muted: #5e6b68;
-    --line: #d3dcd7;
+    --surface-2: #f5f8f6;
+    --ink: #1c2826;
+    --muted: #5b6965;
+    --line: #d8e0dc;
+    --line-strong: #c3cec9;
     --accent: #2f6b5e;
+    --accent-hover: #285b50;
     --accent-ink: #ffffff;
-    --accent-soft: #dcebe6;
+    --accent-soft: #e0eeea;
     --danger: #b3261e;
-    --radius-lg: 14px;
+    --danger-soft: #fbe9e7;
+    --ok: #1f7a4d;
+    --shadow: 0 1px 2px rgba(20, 40, 35, .05), 0 4px 16px rgba(20, 40, 35, .06);
+    --shadow-lg: 0 24px 64px rgba(10, 25, 20, .28);
+    --radius-lg: 16px;
+    --radius: 12px;
     --radius-sm: 8px;
     color-scheme: light;
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #121817;
-      --surface: #1b2321;
-      --ink: #e5ece9;
-      --muted: #9aa7a3;
-      --line: #2c3835;
+      --bg: #111716;
+      --surface: #19211f;
+      --surface-2: #1f2926;
+      --ink: #e4ebe8;
+      --muted: #98a6a1;
+      --line: #2a3633;
+      --line-strong: #3a4844;
       --accent: #74b8a7;
-      --accent-ink: #0e1514;
-      --accent-soft: #233631;
+      --accent-hover: #8cc7b8;
+      --accent-ink: #0d1513;
+      --accent-soft: #20332e;
       --danger: #f2a49d;
+      --danger-soft: #3a2220;
+      --ok: #7fd1a6;
+      --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 4px 16px rgba(0, 0, 0, .25);
+      --shadow-lg: 0 24px 64px rgba(0, 0, 0, .6);
       color-scheme: dark;
     }
   }
@@ -45,114 +60,372 @@
     font-size: 17px;
     line-height: 1.5;
     padding: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px);
+    -webkit-font-smoothing: antialiased;
   }
-  .wrap { max-width: 1180px; margin: 0 auto; padding: 32px 20px 64px; }
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 32px 20px 72px; }
+  svg.i { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  button { font: inherit; color: inherit; }
+  :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 
+  /* Header */
   header.page { margin-bottom: 28px; }
-  header.page p { margin: 0; color: var(--muted); font-size: 15px; }
+  .eyebrow { margin: 0; color: var(--muted); font-size: 15px; font-weight: 600; letter-spacing: .02em; }
   header.page h1 {
-    margin: 4px 0 0;
-    font-size: clamp(34px, 6vw, 56px);
+    margin: 4px 0 14px;
+    font-size: clamp(32px, 5.5vw, 52px);
     line-height: 1.05;
     font-weight: 800;
     letter-spacing: -0.02em;
   }
-
-  .grid { display: grid; gap: 24px; grid-template-columns: 1fr; }
-  @media (min-width: 960px) {
-    .grid { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); align-items: start; }
-    .form-panel { position: sticky; top: 20px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 14px; padding: 4px 12px; border-radius: 999px;
+    background: var(--surface); border: 1px solid var(--line); color: var(--muted);
   }
+  .chip b { color: var(--ink); font-weight: 600; }
+
+  .grid { display: grid; gap: 24px; grid-template-columns: minmax(0, 1fr); }
+  .form-actions { margin-top: 4px; }
+  /* Desktop: the form stays in view next to the (long) task list; its fields scroll inside it
+     and the save button is always visible at the bottom. */
+  @media (min-width: 980px) {
+    .grid { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); align-items: start; }
+    .form-panel {
+      position: sticky; top: 20px;
+      max-height: calc(100vh - 40px);
+      display: flex; flex-direction: column;
+      padding: 0; overflow: hidden;
+    }
+    .form-panel > .panel-head { padding: 22px 24px 0; margin-bottom: 14px; }
+    .form-panel form { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+    .form-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 2px 24px 4px; overscroll-behavior: contain; }
+    .form-actions { margin: 0; padding: 14px 24px 18px; border-top: 1px solid var(--line); background: var(--surface); }
+    .form-panel textarea { min-height: 110px; }
+
+    /* Same for tasks: heading, search and filter stay put, only the list scrolls */
+    .tasks-panel {
+      position: sticky; top: 20px;
+      max-height: calc(100vh - 40px);
+      display: flex; flex-direction: column;
+      padding: 0; overflow: hidden;
+    }
+    .tasks-panel > .panel-head { padding: 22px 24px 0; margin-bottom: 14px; }
+    .tasks-panel .task-tools { position: static; margin: 0; padding: 0 24px 12px; }
+    .task-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 14px 24px 24px; overscroll-behavior: contain; }
+  }
+  .form-scroll, .task-scroll { scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
 
   .panel {
     background: var(--surface);
     border: 1px solid var(--line);
     border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
     padding: 24px;
+    min-width: 0;
   }
-  .panel h2 { margin: 0 0 4px; font-size: 22px; font-weight: 700; }
-  .panel .sub { margin: 0 0 20px; color: var(--muted); font-size: 15px; }
+  .panel-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+  .panel h2 { margin: 0; font-size: 21px; font-weight: 700; line-height: 1.25; }
+  .panel .sub { margin: 2px 0 0; color: var(--muted); font-size: 15px; }
+  .count {
+    display: inline-block; min-width: 26px; padding: 0 8px; margin-inline-start: 6px;
+    border-radius: 999px; background: var(--accent-soft); color: var(--accent);
+    font-size: 14px; font-weight: 700; text-align: center; vertical-align: 2px;
+  }
 
-  .field { margin-bottom: 20px; }
-  .field > label, .field > .label { display: block; font-weight: 600; margin-bottom: 6px; }
-  input[type=text], textarea {
+  /* Form */
+  .field { margin-bottom: 22px; }
+  .field > label, .field > .label { display: block; font-weight: 700; margin-bottom: 8px; font-size: 16px; }
+  input[type=text], input[type=search], textarea {
     width: 100%;
     font: inherit;
     color: var(--ink);
-    background: var(--bg);
+    background: var(--surface-2);
     border: 1px solid var(--line);
     border-radius: var(--radius-sm);
-    padding: 10px 12px;
+    padding: 11px 13px;
+    transition: border-color .15s, background .15s;
   }
-  textarea { min-height: 140px; resize: vertical; }
-  input:focus-visible, textarea:focus-visible, button:focus-visible, .seg input:focus-visible + span, a:focus-visible {
-    outline: 3px solid var(--accent);
-    outline-offset: 2px;
-  }
+  input[type=text]:hover, input[type=search]:hover, textarea:hover { border-color: var(--line-strong); }
+  input[type=text]:focus, input[type=search]:focus, textarea:focus { background: var(--surface); border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }
+  textarea { min-height: 150px; resize: vertical; }
 
-  .seg { display: flex; flex-wrap: wrap; gap: 8px; }
-  .seg label { cursor: pointer; }
-  .seg input { position: absolute; opacity: 0; pointer-events: none; }
-  .seg span {
-    display: inline-block;
-    padding: 8px 14px;
+  .label-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+  .label-row label { font-weight: 700; font-size: 16px; }
+  .auto-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 2px 10px; border-radius: 999px;
+    background: var(--accent-soft); color: var(--accent);
+    font-size: 13px; font-weight: 700;
+  }
+  .auto-badge svg.i { width: 14px; height: 14px; }
+  .select { position: relative; }
+  .select select {
+    width: 100%;
+    appearance: none; -webkit-appearance: none;
+    font: inherit; color: var(--ink);
+    background: var(--surface-2);
     border: 1px solid var(--line);
-    border-radius: 999px;
-    background: var(--bg);
-    font-weight: 500;
+    border-radius: var(--radius-sm);
+    padding: 11px 40px 11px 13px;
+    cursor: pointer;
+    transition: border-color .15s, background .15s;
   }
-  .seg input:checked + span { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
-  .seg .clear span { color: var(--muted); }
+  .select select:hover { border-color: var(--line-strong); }
+  .select select:focus { background: var(--surface); border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }
+  .select::after {
+    content: ""; position: absolute; right: 16px; top: 50%;
+    width: 8px; height: 8px;
+    border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted);
+    transform: translateY(-70%) rotate(45deg);
+    pointer-events: none;
+  }
+  .select select:disabled { cursor: default; opacity: 1; color: var(--ink); font-weight: 600; background: var(--accent-soft); border-color: transparent; }
+  .select.locked::after { display: none; }
+  .select.flash select { animation: flash .9s ease-out; }
+  @keyframes flash { from { box-shadow: 0 0 0 4px var(--accent); } to { box-shadow: 0 0 0 0 transparent; } }
+  .field .hint { margin: 6px 0 0; }
 
-  .files { list-style: none; margin: 0 0 10px; padding: 0; }
-  .files li { padding: 6px 0; border-bottom: 1px dashed var(--line); }
-  .files a { color: var(--accent); }
-  .hint { font-size: 14px; color: var(--muted); }
+  .drop {
+    display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center;
+    padding: 20px 16px;
+    border: 1.5px dashed var(--line-strong);
+    border-radius: var(--radius);
+    background: var(--surface-2);
+    color: var(--muted); font-size: 15px;
+    cursor: pointer;
+    transition: border-color .15s, background .15s;
+  }
+  .drop:hover, .drop.over { border-color: var(--accent); background: var(--accent-soft); }
+  .drop strong { color: var(--accent); font-weight: 700; }
+  .drop svg.i { width: 26px; height: 26px; color: var(--accent); margin-bottom: 2px; }
+  .drop input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+  .drop:focus-within { outline: 3px solid var(--accent); outline-offset: 2px; }
+  .drop[hidden] { display: none; }
 
   button.primary {
     width: 100%;
-    font: inherit;
-    font-weight: 700;
-    font-size: 18px;
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    font-weight: 700; font-size: 18px;
     padding: 14px;
     border: 0;
     border-radius: var(--radius-sm);
     background: var(--accent);
     color: var(--accent-ink);
     cursor: pointer;
+    transition: background .15s;
   }
-  button.primary[disabled] { opacity: .6; cursor: progress; }
+  button.primary:hover { background: var(--accent-hover); }
+  button.primary[disabled] { opacity: .65; cursor: progress; }
   .msg { margin-top: 12px; font-weight: 600; }
-  .msg.err { color: var(--danger); }
-  .msg.ok { color: var(--accent); }
+  .msg:empty { display: none; }
+  .msg.err { color: var(--danger); background: var(--danger-soft); padding: 10px 12px; border-radius: var(--radius-sm); }
 
-  .tasks { list-style: none; margin: 0; padding: 0; }
-  .task { padding: 18px 0; border-top: 1px solid var(--line); }
-  .task:first-child { border-top: 0; padding-top: 0; }
-  .task-head { display: flex; gap: 12px; align-items: baseline; justify-content: space-between; flex-wrap: wrap; }
-  .task-head h3 { margin: 0; font-size: 19px; font-weight: 700; }
+  /* File rows and chips */
+  .file-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  .file-list:not(:empty) { margin-top: 10px; }
+  .file-list.existing { margin: 0 0 10px; }
+  .file-row {
+    display: flex; align-items: center; gap: 4px;
+    padding: 6px;
+    border: 1px solid var(--line); border-radius: var(--radius-sm);
+    background: var(--surface);
+    transition: border-color .15s;
+  }
+  .file-row:hover { border-color: var(--line-strong); }
+  .file-open {
+    flex: 1; min-width: 0;
+    display: flex; align-items: center; gap: 12px;
+    padding: 2px 6px 2px 2px;
+    background: none; border: 0; border-radius: 6px;
+    text-align: start; cursor: pointer;
+  }
+  .file-open .meta { min-width: 0; }
+  .file-open:hover .file-name { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+  .file-name { display: block; font-weight: 600; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .file-size { display: block; font-size: 13px; color: var(--muted); }
+  .ftype {
+    flex: none; display: inline-grid; place-items: center;
+    width: 38px; height: 38px; border-radius: 8px;
+    font-size: 10.5px; font-weight: 800; letter-spacing: .03em; color: #fff;
+    background: #6b7875;
+  }
+  .ftype.sm { width: 28px; height: 28px; font-size: 8.5px; border-radius: 6px; }
+  .ftype.docx { background: #2b5797; }
+  .ftype.pdf { background: #c0392b; }
+  .ftype.image { background: #7b4fbf; }
+  .ftype.text { background: #4f5d5a; }
+  .ftype.media { background: #b06a00; }
+  .icon-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    min-width: 36px; height: 36px; padding: 0 10px;
+    border: 1px solid var(--line); border-radius: var(--radius-sm);
+    background: var(--surface); color: var(--ink);
+    font-size: 14px; font-weight: 600; text-decoration: none;
+    cursor: pointer; white-space: nowrap;
+    transition: background .15s, border-color .15s;
+  }
+  .icon-btn:hover { background: var(--surface-2); border-color: var(--line-strong); }
+  .icon-btn.ghost { border-color: transparent; background: transparent; }
+  .icon-btn.ghost:hover { background: var(--surface-2); }
+  .icon-btn.view { border-color: var(--accent); color: var(--accent); }
+  .icon-btn.view:hover { background: var(--accent-soft); }
+  .file-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .file-chip {
+    display: inline-flex; align-items: center; gap: 8px; max-width: 100%;
+    padding: 5px 12px 5px 5px;
+    border: 1px solid var(--line); border-radius: 10px;
+    background: var(--surface-2);
+    font-size: 14px; font-weight: 600; text-align: start;
+    cursor: pointer;
+    transition: border-color .15s, background .15s;
+  }
+  .file-chip:hover { border-color: var(--accent); background: var(--accent-soft); }
+  .file-chip .file-name { font-size: 14px; }
+
+  /* File viewer (inside the dialog) */
+  .viewer { min-height: 100%; }
+  .viewer-state { display: grid; place-items: center; align-content: center; gap: 10px; min-height: 240px; height: 100%; padding: 32px 20px; text-align: center; color: var(--muted); }
+  .viewer-state h3 { margin: 0; color: var(--ink); font-size: 18px; }
+  .viewer-state p { margin: 0; max-width: 42ch; }
+  .spinner { width: 28px; height: 28px; border-radius: 50%; border: 3px solid var(--line); border-top-color: var(--accent); animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 2.4s; } }
+
+  /* docx-preview output: one fluid sheet of paper instead of fixed-width pages */
+  .doc-body { padding: clamp(10px, 2.5vw, 24px); }
+  .doc-body .docx-wrapper { background: transparent; padding: 0; display: block; }
+  .doc-body .docx-wrapper > section.docx {
+    width: auto !important; max-width: 860px; min-height: 0 !important;
+    margin: 0 auto 16px !important;
+    padding: clamp(20px, 5vw, 56px) !important;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .12), 0 6px 20px rgba(0, 0, 0, .06);
+    overflow-wrap: anywhere;
+  }
+  .doc-body .docx-wrapper > section.docx:last-child { margin-bottom: 0 !important; }
+  .doc-body img { max-width: 100%; height: auto; }
+  .viewer pre {
+    margin: clamp(10px, 2.5vw, 24px); padding: clamp(18px, 4vw, 40px);
+    background: #fff; color: #1d1d1d; border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .12);
+    font: 15px/1.65 "Assistant", "Segoe UI", Arial, sans-serif;
+    white-space: pre-wrap; overflow-wrap: anywhere;
+  }
+  .viewer iframe { display: block; width: 100%; height: 100%; min-height: 70vh; border: 0; background: #fff; }
+  .viewer .media-wrap { display: grid; place-items: center; min-height: 100%; padding: 16px; }
+  .viewer img, .viewer video { display: block; max-width: 100%; max-height: 80vh; margin: auto; border-radius: 6px; }
+  .viewer audio { width: min(100%, 520px); }
+
+  /* Tasks */
+  .tasks { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+  .task {
+    padding: 16px 18px;
+    border: 1px solid var(--line); border-radius: var(--radius);
+    border-inline-start: 4px solid var(--status, var(--line-strong));
+    background: var(--surface);
+  }
+  .task-head { display: flex; gap: 12px; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; }
+  .task-head h3 { margin: 0; font-size: 18px; font-weight: 700; line-height: 1.3; }
   .pill {
-    font-size: 14px; font-weight: 600; padding: 2px 10px; border-radius: 999px;
+    font-size: 13px; font-weight: 700; padding: 3px 10px; border-radius: 999px;
     color: #fff; background: #8a9692; white-space: nowrap;
   }
   .pill.empty { background: transparent; color: var(--muted); border: 1px solid var(--line); }
-  dl.meta { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; margin: 10px 0 0; font-size: 15px; }
+  dl.meta { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; margin: 12px 0 0; font-size: 15px; }
   dl.meta dt { color: var(--muted); }
   dl.meta dd { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
-  .count { color: var(--muted); font-weight: 500; }
+  @media (max-width: 520px) {
+    dl.meta { grid-template-columns: 1fr; gap: 0; }
+    dl.meta dt { font-size: 13px; margin-top: 8px; }
+    dl.meta dt:first-child { margin-top: 0; }
+  }
+  .task-files { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--line); }
+  .task[hidden] { display: none; }
 
-  .state { padding: 48px 24px; text-align: center; }
+  /* Task search + status filter; stays at the top while scrolling a long list */
+  .task-tools {
+    position: sticky; top: 0; z-index: 2;
+    display: grid; gap: 10px;
+    margin: -6px -8px 14px; padding: 6px 8px 12px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--line);
+  }
+  .search { position: relative; }
+  .search svg.i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
+  .search input { padding-left: 40px; }
+  .search input::-webkit-search-cancel-button { cursor: pointer; }
+  .status-filter { display: flex; flex-wrap: wrap; gap: 6px; }
+  .fchip {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 5px 12px; border-radius: 999px;
+    border: 1px solid var(--line); background: var(--surface-2);
+    font-size: 14px; font-weight: 600; cursor: pointer;
+    transition: border-color .15s, background .15s;
+  }
+  .fchip:hover { border-color: var(--line-strong); }
+  .fchip .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+  .fchip .n { color: var(--muted); font-weight: 500; }
+  .fchip[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--surface); }
+  .fchip[aria-pressed="true"] .n { color: inherit; opacity: .75; }
+  .fchip.zero:not([aria-pressed="true"]) { color: var(--muted); }
+  .task-results { font-size: 14px; color: var(--muted); }
+  .link-btn { background: none; border: 0; padding: 0; color: var(--accent); font-weight: 600; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+
+  .hint { font-size: 14px; color: var(--muted); }
+  .empty-state { padding: 28px 16px; text-align: center; color: var(--muted); border: 1px dashed var(--line-strong); border-radius: var(--radius); background: var(--surface-2); }
+  .empty-state strong { display: block; color: var(--ink); margin-bottom: 2px; }
+
+  .state { padding: 56px 24px; text-align: center; }
   .state h2 { margin: 0 0 8px; }
-  .skeleton { color: var(--muted); }
+  .skeleton { display: grid; place-items: center; gap: 14px; color: var(--muted); padding: 120px 0; }
 
-  .done { text-align: center; padding: 40px 12px; }
+  .done { text-align: center; padding: 36px 24px; }
+  .done .tick { display: inline-grid; place-items: center; width: 56px; height: 56px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); margin-bottom: 12px; }
+  .done .tick svg.i { width: 28px; height: 28px; stroke-width: 2.5; }
   .done h2 { font-size: 26px; margin: 0 0 6px; }
+  .done p { margin: 0 auto; max-width: 40ch; }
+  .done .saved-status { margin: 14px 0 22px; }
+  .done button.primary { width: auto; padding: 12px 22px; font-size: 17px; }
+
+  /* Full-screen viewer dialog */
+  dialog.viewer-dialog {
+    width: min(1100px, 100vw - 32px); height: min(92vh, 100dvh - 32px);
+    max-width: none; max-height: none;
+    padding: 0; border: 0; border-radius: var(--radius-lg);
+    background: var(--surface); color: var(--ink);
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+  }
+  dialog.viewer-dialog[open] { display: flex; flex-direction: column; }
+  dialog.viewer-dialog::backdrop { background: rgba(8, 18, 15, .6); backdrop-filter: blur(2px); }
+  .dlg-head { display: flex; align-items: center; gap: 12px; padding: 12px 12px 12px 16px; border-bottom: 1px solid var(--line); }
+  .dlg-head .meta { flex: 1; min-width: 0; }
+  .dlg-head .file-name { font-size: 16px; }
+  .dlg-body { flex: 1; overflow: auto; background: var(--surface-2); overscroll-behavior: contain; }
+  @media (max-width: 640px) {
+    dialog.viewer-dialog { width: 100vw; height: 100dvh; border-radius: 0; }
+    .icon-btn .lbl { display: none; }
+  }
 </style>
 </head>
 <body>
 <div class="wrap" id="app">
-  <div class="state skeleton">Loading the interview details…</div>
+  <div class="skeleton"><div class="spinner"></div>Loading the interview details…</div>
 </div>
+
+<dialog class="viewer-dialog" id="viewerDialog" aria-labelledby="dlgTitle">
+  <div class="dlg-head">
+    <span id="dlgType"></span>
+    <div class="meta">
+      <span class="file-name" id="dlgTitle" dir="auto"></span>
+      <span class="file-size" id="dlgSize"></span>
+    </div>
+    <a class="icon-btn" id="dlgDownload" href="#" download><svg class="i" viewBox="0 0 24 24"><path d="M12 4v11m0 0-4-4m4 4 4-4M5 20h14"/></svg><span class="lbl">Download</span></a>
+    <button type="button" class="icon-btn ghost" id="dlgClose" aria-label="Close"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+  </div>
+  <div class="dlg-body" id="dlgBody"></div>
+</dialog>
 
 <script>
 (function () {
@@ -160,12 +433,205 @@
   const params = new URLSearchParams(location.search);
   const itemId = (params.get('itemId') || params.get('item_id') || params.get('id') || '').trim();
   const MAX_FILE_BYTES = 3 * 1024 * 1024;
+  // Matches MAX_PROXY_BYTES in api/file.js; above it the API redirects to monday's download link.
+  const MAX_PREVIEW_BYTES = 4 * 1024 * 1024;
+  const JSZIP_SRC = 'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js';
+  const DOCX_SRC = 'https://cdn.jsdelivr.net/npm/docx-preview@0.4.1/dist/docx-preview.min.js';
+
+  const ICONS = {
+    download: '<path d="M12 4v11m0 0-4-4m4 4 4-4M5 20h14"/>',
+    close: '<path d="M6 6l12 12M18 6 6 18"/>',
+    upload: '<path d="M12 16V5m0 0-4 4m4-4 4 4M5 20h14"/>',
+    eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+    check: '<path d="M5 12.5 10 17l9-10"/>',
+    reload: '<path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/>',
+    auto: '<path d="M13 3 5 14h6l-1 7 8-11h-6z"/>',
+    search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
+    file: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/>',
+  };
+  const icon = (name) => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name]}</svg>`;
 
   const esc = (s) => String(s == null ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   const dash = (s) => (s && String(s).trim()) ? esc(s) : '—';
 
+  function formatSize(bytes) {
+    const n = Number(bytes);
+    if (!n && n !== 0) return '';
+    if (n < 1024) return n + ' B';
+    if (n < 1024 * 1024) return Math.round(n / 1024) + ' KB';
+    return (n / 1024 / 1024).toFixed(1) + ' MB';
+  }
+
+  // ---------- File model ----------
+  const KINDS = {
+    docx: 'docx', pdf: 'pdf',
+    png: 'image', jpg: 'image', jpeg: 'image', gif: 'image', webp: 'image',
+    txt: 'text', csv: 'text',
+    mp3: 'audio', m4a: 'audio', wav: 'audio', ogg: 'audio',
+    mp4: 'video', webm: 'video', mov: 'video',
+  };
+  const extOf = (s) => (String(s || '').match(/\.?([a-z0-9]+)$/i) || [, ''])[1].toLowerCase();
+  const kindOf = (f) => KINDS[f.ext] || null;
+  const typeClass = (f) => ({ docx: 'docx', pdf: 'pdf', image: 'image', text: 'text', audio: 'media', video: 'media' })[kindOf(f)] || '';
+  const typeBadge = (f, sm) => `<span class="ftype ${typeClass(f)} ${sm ? 'sm' : ''}" aria-hidden="true">${esc((f.ext || 'file').slice(0, 4).toUpperCase())}</span>`;
+
+  const fileUrl = (assetId, download) =>
+    `/api/file?itemId=${encodeURIComponent(itemId)}&assetId=${encodeURIComponent(assetId)}${download ? '&download=1' : ''}`;
+
+  function remoteFile(f) {
+    return {
+      key: 'a' + f.assetId,
+      name: f.name,
+      ext: extOf(f.extension || f.name),
+      size: Number(f.size) || 0,
+      url: fileUrl(f.assetId),
+      downloadUrl: fileUrl(f.assetId, true),
+    };
+  }
+  function localFile(file) {
+    return { key: 'l' + Math.random().toString(36).slice(2), name: file.name, ext: extOf(file.name), size: file.size, file };
+  }
+
+  const files = new Map(); // key -> file, for click delegation
+  const track = (f) => (files.set(f.key, f), f);
+
+  // ---------- Rendering files in place ----------
+  let docxReady = null;
+  function loadScript(src) {
+    return new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = src;
+      s.onload = resolve;
+      s.onerror = () => reject(new Error('The document viewer could not be loaded.'));
+      document.head.appendChild(s);
+    });
+  }
+  function loadDocx() {
+    if (!docxReady) {
+      docxReady = loadScript(JSZIP_SRC).then(() => loadScript(DOCX_SRC)).then(() => window.docx);
+      docxReady.catch(() => { docxReady = null; });
+    }
+    return docxReady;
+  }
+
+  const blobCache = new Map();
+  async function getBlob(f) {
+    if (f.file) return f.file;
+    if (!blobCache.has(f.key)) {
+      const p = fetch(f.url).then(async (r) => {
+        if (!r.ok) {
+          const err = await r.json().catch(() => ({}));
+          throw new Error(err.error || 'The file could not be loaded.');
+        }
+        return r.blob();
+      });
+      p.catch(() => blobCache.delete(f.key));
+      blobCache.set(f.key, p);
+    }
+    return blobCache.get(f.key);
+  }
+
+  async function decodeText(blob) {
+    const buf = await blob.arrayBuffer();
+    try { return new TextDecoder('utf-8', { fatal: true }).decode(buf); }
+    catch { return new TextDecoder('windows-1255').decode(buf); } // older Hebrew Windows files
+  }
+
+  const objectUrls = new WeakMap();
+  function srcFor(f, container) {
+    if (!f.file) return f.url;
+    const url = URL.createObjectURL(f.file);
+    (objectUrls.get(container) || objectUrls.set(container, []).get(container)).push(url);
+    return url;
+  }
+  function releaseUrls(container) {
+    (objectUrls.get(container) || []).forEach((u) => URL.revokeObjectURL(u));
+    objectUrls.delete(container);
+  }
+
+  function stateHtml(title, text, f) {
+    const dl = f && (f.downloadUrl
+      ? `<a class="icon-btn" href="${esc(f.downloadUrl)}" download>${icon('download')}Download</a>`
+      : '');
+    return `<div class="viewer-state">${icon('file')}<h3>${esc(title)}</h3><p>${esc(text)}</p>${dl}</div>`;
+  }
+
+  let renderSeq = 0;
+  async function renderFile(container, f) {
+    const seq = ++renderSeq;
+    container.dataset.seq = seq;
+    releaseUrls(container);
+    const stale = () => container.dataset.seq !== String(seq);
+    const kind = kindOf(f);
+
+    if (!kind) {
+      container.innerHTML = stateHtml('No preview for this file type', `.${f.ext || 'file'} files can’t be shown in the browser. Download it to open it.`, f);
+      return;
+    }
+    if (!f.file && f.size > MAX_PREVIEW_BYTES && ['docx', 'text', 'pdf'].includes(kind)) {
+      container.innerHTML = stateHtml('This file is too large to preview', `Files over ${formatSize(MAX_PREVIEW_BYTES)} open as a download.`, f);
+      return;
+    }
+
+    container.innerHTML = `<div class="viewer-state"><div class="spinner"></div>Opening ${esc(f.name)}…</div>`;
+    try {
+      if (kind === 'docx') {
+        const [blob, docx] = await Promise.all([getBlob(f), loadDocx()]);
+        if (stale()) return;
+        const body = document.createElement('div');
+        body.className = 'doc-body';
+        await docx.renderAsync(blob, body, null, {
+          inWrapper: true, ignoreWidth: true, ignoreHeight: true, breakPages: false, experimental: true,
+        });
+        if (stale()) return;
+        container.replaceChildren(body);
+      } else if (kind === 'text') {
+        const text = await decodeText(await getBlob(f));
+        if (stale()) return;
+        container.innerHTML = `<pre dir="auto">${esc(text)}</pre>`;
+      } else if (kind === 'pdf') {
+        container.innerHTML = `<iframe src="${esc(srcFor(f, container))}" title="${esc(f.name)}"></iframe>`;
+      } else if (kind === 'image') {
+        container.innerHTML = `<div class="media-wrap"><img src="${esc(srcFor(f, container))}" alt="${esc(f.name)}"></div>`;
+      } else {
+        container.innerHTML = `<div class="media-wrap"><${kind} src="${esc(srcFor(f, container))}" controls preload="metadata"></${kind}></div>`;
+      }
+    } catch (e) {
+      if (!stale()) container.innerHTML = stateHtml('The file could not be shown', e.message, f);
+    }
+  }
+
+  // ---------- Full-screen dialog ----------
+  const dlg = document.getElementById('viewerDialog');
+  const dlgBody = document.getElementById('dlgBody');
+  const dlgDownload = document.getElementById('dlgDownload');
+  function openViewer(f) {
+    document.getElementById('dlgTitle').textContent = f.name;
+    document.getElementById('dlgSize').textContent = [f.ext.toUpperCase(), formatSize(f.size)].filter(Boolean).join(' · ');
+    document.getElementById('dlgType').innerHTML = typeBadge(f);
+    dlgDownload.hidden = !f.downloadUrl;
+    dlgDownload.href = f.downloadUrl || '#';
+    dlgBody.innerHTML = '';
+    const view = document.createElement('div');
+    view.className = 'viewer';
+    dlgBody.appendChild(view);
+    if (typeof dlg.showModal === 'function') dlg.showModal(); else dlg.setAttribute('open', '');
+    renderFile(view, f);
+  }
+  function closeViewer() {
+    if (dlg.open) dlg.close();
+  }
+  dlg.addEventListener('close', () => {
+    const view = dlgBody.firstElementChild;
+    if (view) { view.dataset.seq = ''; releaseUrls(view); }
+    dlgBody.innerHTML = ''; // stops audio/video
+  });
+  dlg.addEventListener('click', (e) => { if (e.target === dlg) closeViewer(); });
+  document.getElementById('dlgClose').addEventListener('click', closeViewer);
+
+  // ---------- Page ----------
   function showState(title, text) {
     app.innerHTML = `<div class="panel state"><h2>${esc(title)}</h2><p class="hint">${esc(text)}</p></div>`;
   }
@@ -184,23 +650,33 @@
     .then(render)
     .catch((e) => showState('The form could not load', e.message));
 
-  function segment(name, options, current) {
-    const opts = options.map((o) => `
-      <label><input type="radio" name="${name}" value="${esc(o)}" ${o === current ? 'checked' : ''}><span>${esc(o)}</span></label>`).join('');
-    return `<div class="seg" role="radiogroup">${opts}
-      <label class="clear"><input type="radio" name="${name}" value="" ${!current ? 'checked' : ''}><span>Not set</span></label></div>`;
+  function selectHtml(id, options, current, { locked, blank } = {}) {
+    const opts = (blank ? [`<option value="">${esc(blank)}</option>`] : [])
+      .concat(options.map((o) => `<option value="${esc(o)}" ${o === current ? 'selected' : ''}>${esc(o)}</option>`));
+    return `<div class="select ${locked ? 'locked' : ''}"><select id="${id}" ${locked ? 'disabled' : ''}>${opts.join('')}</select></div>`;
   }
 
-  function fileList(files) {
-    if (!files || !files.length) return '';
-    return files.map((f) => `<a href="${esc(f.url)}" target="_blank" rel="noopener" dir="auto">${esc(f.name)}</a>`).join('<br>');
-  }
+  // One file per row; clicking the name or "View" opens it in the viewer dialog.
+  const fileRow = (f, detail, actions) => `
+    <li class="file-row">
+      <button type="button" class="file-open" data-preview="${esc(f.key)}" title="View ${esc(f.name)}">
+        ${typeBadge(f)}
+        <span class="meta"><span class="file-name" dir="auto">${esc(f.name)}</span><span class="file-size">${esc(detail)}</span></span>
+      </button>
+      ${actions}
+    </li>`;
+
+  const fileChip = (f) => `
+    <button type="button" class="file-chip" data-preview="${esc(f.key)}" title="Preview ${esc(f.name)}">
+      ${typeBadge(f, true)}<span class="file-name" dir="auto">${esc(f.name)}</span>
+    </button>`;
 
   function taskHtml(t) {
     const pill = t.status
       ? `<span class="pill" style="background:${esc(t.statusColor || '#8a9692')}">${esc(t.status)}</span>`
       : `<span class="pill empty">No status</span>`;
-    return `<li class="task">
+    const taskFiles = (t.files || []).map((x) => track(remoteFile(x)));
+    return `<li class="task" data-task="${esc(t.id)}" style="--status:${esc(t.statusColor || 'var(--line-strong)')}">
       <div class="task-head"><h3 dir="auto">${esc(t.name)}</h3>${pill}</div>
       <dl class="meta">
         <dt>Person in charge</dt><dd dir="auto">${dash(t.personInCharge)}</dd>
@@ -208,25 +684,100 @@
         <dt>Date</dt><dd>${dash(t.date)}</dd>
         <dt>Description</dt><dd dir="auto">${dash(t.description)}</dd>
         <dt>Comments</dt><dd dir="auto">${dash(t.comments)}</dd>
-        <dt>Files</dt><dd>${fileList(t.files) || '—'}</dd>
       </dl>
+      ${taskFiles.length ? `<div class="task-files file-chips">${taskFiles.map(fileChip).join('')}</div>` : ''}
     </li>`;
   }
 
+  // ---------- Task search + status filter ----------
+  const statusLabel = (s) => s.charAt(0).toUpperCase() + s.slice(1); // monday has "canceled" in lower case
+
+  function taskToolsHtml(tasks, statuses) {
+    const count = (label) => tasks.filter((t) => t.status === label).length;
+    const chips = statuses.map((s) => {
+      const n = count(s.label);
+      return `<button type="button" class="fchip ${n ? '' : 'zero'}" data-status="${esc(s.label)}" aria-pressed="false">
+        <span class="dot" style="background:${esc(s.color)}"></span>${esc(statusLabel(s.label))}<span class="n">${n}</span></button>`;
+    }).join('');
+    return `<div class="task-tools">
+      <div class="search">${icon('search')}<input type="search" id="taskSearch" placeholder="Search tasks by name, person, description…" aria-label="Search tasks" dir="auto"></div>
+      <div class="status-filter" role="group" aria-label="Filter by status">
+        <button type="button" class="fchip" data-status="" aria-pressed="true">All<span class="n">${tasks.length}</span></button>${chips}
+      </div>
+      <div class="task-results" id="taskResults" aria-live="polite"></div>
+    </div>`;
+  }
+
+  function setupTaskFilter(tasks) {
+    const search = document.getElementById('taskSearch');
+    const results = document.getElementById('taskResults');
+    const empty = document.getElementById('taskEmpty');
+    const chips = Array.from(document.querySelectorAll('.fchip'));
+    const rows = tasks.map((t) => ({
+      el: document.querySelector(`.task[data-task="${CSS.escape(String(t.id))}"]`),
+      status: t.status,
+      text: [t.name, t.personInCharge, t.linkedVolunteer, t.description, t.comments, t.date, t.status].join(' ').toLowerCase(),
+    }));
+    let status = '';
+
+    function apply() {
+      const words = search.value.toLowerCase().split(/\s+/).filter(Boolean);
+      let shown = 0;
+      for (const r of rows) {
+        const match = (!status || r.status === status) && words.every((w) => r.text.includes(w));
+        r.el.hidden = !match;
+        if (match) shown++;
+      }
+      chips.forEach((c) => c.setAttribute('aria-pressed', String(c.dataset.status === status)));
+      empty.hidden = shown > 0;
+      empty.parentElement.scrollTop = 0; // show the first match, not wherever the list was scrolled to
+      results.textContent = shown === rows.length ? '' : `Showing ${shown} of ${rows.length} tasks`;
+      results.hidden = !results.textContent;
+    }
+
+    chips.forEach((c) => c.addEventListener('click', () => {
+      status = c.dataset.status === status ? '' : c.dataset.status; // clicking the active chip goes back to All
+      apply();
+    }));
+    search.addEventListener('input', apply);
+    document.getElementById('taskReset').addEventListener('click', () => {
+      search.value = '';
+      status = '';
+      apply();
+      search.focus();
+    });
+    apply();
+  }
+
+  const existingRow = (f) => fileRow(f, [f.ext.toUpperCase(), formatSize(f.size)].filter(Boolean).join(' · '), `
+    <button type="button" class="icon-btn view" data-preview="${esc(f.key)}">${icon('eye')}<span class="lbl">View</span></button>
+    <a class="icon-btn ghost" href="${esc(f.downloadUrl)}" download aria-label="Download ${esc(f.name)}">${icon('download')}</a>`);
+
   function render(data) {
     const f = data.fields, m = data.meta, titles = m.titles;
+    statusAuto = m.statusAuto;
     document.title = 'Interview review: ' + data.item.name;
+    const summaryFiles = (f.meetingSummaryFiles || []).map((x) => track(remoteFile(x)));
+    const chip = (label, value) => `<span class="chip">${esc(label)}: <b dir="auto">${value ? esc(value) : 'Not set'}</b></span>`;
 
     app.innerHTML = `
       <header class="page">
-        <p>Interview review for item ${esc(data.item.id)}</p>
+        <p class="eyebrow">Interview review · item ${esc(data.item.id)}</p>
         <h1 dir="auto">${esc(data.item.name)}</h1>
+        <div class="chips">
+          ${chip(titles.status, f.status)}
+          ${chip(titles.recommendation, f.recommendation)}
+          <span class="chip"><b>${data.tasks.length}</b> linked task${data.tasks.length === 1 ? '' : 's'}</span>
+        </div>
       </header>
       <div class="grid">
         <section class="panel form-panel" id="formPanel">
-          <h2>Your review</h2>
-          <p class="sub">Check the details, change what’s needed, then save.</p>
+          <div class="panel-head"><div>
+            <h2>Your review</h2>
+            <p class="sub">Check the details, change what’s needed, then save.</p>
+          </div></div>
           <form id="reviewForm" novalidate>
+            <div class="form-scroll">
             <div class="field">
               <label for="preferredLocation">${esc(titles.preferredLocation)}</label>
               <input type="text" id="preferredLocation" dir="auto" value="${esc(f.preferredLocation)}">
@@ -236,36 +787,110 @@
               <textarea id="interviewerNotes" dir="auto">${esc(f.interviewerNotes)}</textarea>
             </div>
             <div class="field">
-              <span class="label" id="statusLbl">${esc(titles.status)}</span>
-              ${segment('status', m.statusOptions, f.status)}
+              <label for="recommendation">${esc(titles.recommendation)}</label>
+              ${selectHtml('recommendation', m.recommendationOptions, f.recommendation, { blank: 'Not set' })}
             </div>
             <div class="field">
-              <span class="label">${esc(titles.recommendation)}</span>
-              ${segment('recommendation', m.recommendationOptions, f.recommendation)}
+              <span class="label" dir="auto">${esc(titles.meetingSummary)}${summaryFiles.length ? `<span class="count">${summaryFiles.length}</span>` : ''}</span>
+              ${summaryFiles.length
+                ? `<ul class="file-list existing">${summaryFiles.map(existingRow).join('')}</ul>`
+                : '<p class="hint" style="margin:0 0 10px">No file attached yet.</p>'}
+              <label class="drop" id="drop">
+                ${icon('upload')}
+                <span><strong>Choose a file</strong> or drag it here</span>
+                <span>One new or updated summary, up to 3 MB</span>
+                <input type="file" id="summaryFile">
+              </label>
+              <ul class="file-list" id="pendingList"></ul>
             </div>
             <div class="field">
-              <label for="summaryFiles" dir="auto">${esc(titles.meetingSummary)}</label>
-              <ul class="files">${(f.meetingSummaryFiles || []).map((x) =>
-                `<li><a href="${esc(x.url)}" target="_blank" rel="noopener" dir="auto">${esc(x.name)}</a></li>`).join('') ||
-                '<li class="hint">No file attached yet.</li>'}</ul>
-              <input type="file" id="summaryFiles" multiple>
-              <div class="hint">Add a new or updated summary. Up to 3 MB in total.</div>
+              <div class="label-row">
+                <label for="status">${esc(titles.status)}</label>
+                <span class="auto-badge">${icon('auto')}Set automatically</span>
+              </div>
+              ${selectHtml('status', m.statusOptions, statusAuto.withoutFile, { locked: true })}
+              <p class="hint" dir="auto">Picked from the ${esc(titles.meetingSummary)} upload above: adding a file saves it as
+                “${esc(statusAuto.withFile)}”, otherwise it’s saved as “${esc(statusAuto.withoutFile)}”.</p>
             </div>
-            <button type="submit" class="primary" id="saveBtn">Save review</button>
-            <div class="msg" id="msg" role="status" aria-live="polite"></div>
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="primary" id="saveBtn">Save review</button>
+              <div class="msg" id="msg" role="status" aria-live="polite"></div>
+            </div>
           </form>
         </section>
-        <section class="panel">
-          <h2>Tasks <span class="count">(${data.tasks.length})</span></h2>
-          <p class="sub">Linked tasks from the task list. These are for reference and can’t be edited here.</p>
-          ${data.tasks.length ? `<ul class="tasks">${data.tasks.map(taskHtml).join('')}</ul>` : '<p class="hint">No tasks are linked to this volunteer yet.</p>'}
+
+        <section class="panel tasks-panel">
+          <div class="panel-head"><div>
+            <h2>Tasks${data.tasks.length ? `<span class="count">${data.tasks.length}</span>` : ''}</h2>
+            <p class="sub">Linked tasks from the task list. These are for reference and can’t be edited here.</p>
+          </div></div>
+          ${data.tasks.length ? `
+            ${taskToolsHtml(data.tasks, m.taskStatuses || [])}
+            <div class="task-scroll">
+              <ul class="tasks" id="taskList">${data.tasks.map(taskHtml).join('')}</ul>
+              <div class="empty-state" id="taskEmpty" hidden><strong>No tasks match</strong>
+                <button type="button" class="link-btn" id="taskReset">Clear search and filter</button></div>
+            </div>`
+          : '<div class="task-scroll"><div class="empty-state"><strong>No tasks yet</strong>No tasks are linked to this volunteer.</div></div>'}
         </section>
       </div>`;
 
+    setupUploads();
+    if (data.tasks.length) setupTaskFilter(data.tasks);
+
+    app.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-preview]');
+      if (btn && files.has(btn.dataset.preview)) openViewer(files.get(btn.dataset.preview));
+    });
     document.getElementById('reviewForm').addEventListener('submit', (e) => {
       e.preventDefault();
       submit(data.item.id);
     });
+  }
+
+  // ---------- New summary upload (one file) ----------
+  let newFile = null;
+  let statusAuto = null;
+  const autoStatus = () => (newFile ? statusAuto.withFile : statusAuto.withoutFile);
+  function setupUploads() {
+    const input = document.getElementById('summaryFile');
+    const drop = document.getElementById('drop');
+    const choose = (list) => {
+      const picked = list && list[0];
+      input.value = '';
+      if (!picked) return;
+      if (newFile) files.delete(newFile.key);
+      newFile = track(localFile(picked));
+      drawPending();
+    };
+    input.addEventListener('change', () => choose(input.files));
+    ['dragenter', 'dragover'].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add('over'); }));
+    ['dragleave', 'drop'].forEach((ev) => drop.addEventListener(ev, () => drop.classList.remove('over')));
+    drop.addEventListener('drop', (e) => { e.preventDefault(); choose(e.dataTransfer && e.dataTransfer.files); });
+    document.getElementById('pendingList').addEventListener('click', (e) => {
+      if (!e.target.closest('[data-remove]') || !newFile) return;
+      files.delete(newFile.key);
+      newFile = null;
+      drawPending();
+      input.focus();
+    });
+  }
+  function drawPending() {
+    const f = newFile;
+    document.getElementById('drop').hidden = !!f;
+    document.getElementById('pendingList').innerHTML = f ? fileRow(f, `${formatSize(f.size)} · new, not saved yet`, `
+      <button type="button" class="icon-btn view" data-preview="${esc(f.key)}">${icon('eye')}<span class="lbl">View</span></button>
+      <button type="button" class="icon-btn ghost" data-remove aria-label="Remove ${esc(f.name)}">${icon('close')}</button>`) : '';
+
+    const status = document.getElementById('status');
+    if (status.value !== autoStatus()) {
+      status.value = autoStatus();
+      const wrap = status.parentElement;
+      wrap.classList.remove('flash');
+      void wrap.offsetWidth; // restart the animation
+      wrap.classList.add('flash');
+    }
   }
 
   function readFile(file) {
@@ -282,18 +907,15 @@
     const msg = document.getElementById('msg');
     msg.className = 'msg'; msg.textContent = '';
 
-    const files = Array.from(document.getElementById('summaryFiles').files || []);
-    const total = files.reduce((s, f) => s + f.size, 0);
-    if (total > MAX_FILE_BYTES) {
+    if (newFile && newFile.size > MAX_FILE_BYTES) {
       msg.className = 'msg err';
-      msg.textContent = 'The selected files are larger than 3 MB. Choose smaller files and save again.';
+      msg.textContent = 'The selected file is larger than 3 MB. Choose a smaller file and save again.';
       return;
     }
 
     btn.disabled = true; btn.textContent = 'Saving…';
     try {
-      const newFiles = await Promise.all(files.map(readFile));
-      const val = (n) => (document.querySelector(`input[name="${n}"]:checked`) || {}).value || '';
+      const newFiles = newFile ? [await readFile(newFile.file)] : [];
       const res = await fetch('/api/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -301,16 +923,22 @@
           itemId: id,
           preferredLocation: document.getElementById('preferredLocation').value,
           interviewerNotes: document.getElementById('interviewerNotes').value,
-          status: val('status'),
-          recommendation: val('recommendation'),
+          recommendation: document.getElementById('recommendation').value,
           newFiles,
         }),
       });
       const out = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(out.error || 'The review could not be saved.');
 
-      document.getElementById('formPanel').innerHTML =
-        '<div class="done"><h2>Review saved</h2><p class="hint">Thanks. Your changes were sent and will appear on monday.com shortly.</p></div>';
+      document.getElementById('formPanel').innerHTML = `
+        <div class="done">
+          <span class="tick">${icon('check')}</span>
+          <h2>Review saved</h2>
+          <p class="hint">Thanks. Your changes were sent to monday.com. They can take a minute to show up, so if the form looks unchanged, wait a moment and reload again.</p>
+          <div class="chips saved-status" style="justify-content:center"><span class="chip">Status: <b>${esc(out.status || autoStatus())}</b></span></div>
+          <button type="button" class="primary" id="backBtn">${icon('reload')}Back to the form</button>
+        </div>`;
+      document.getElementById('backBtn').addEventListener('click', () => location.reload());
     } catch (e) {
       msg.className = 'msg err';
       msg.textContent = e.message + ' Try again.';

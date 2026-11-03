@@ -13,8 +13,9 @@ Open: `https://<your-project>.vercel.app/?itemId=<Main Volunteers Board item id>
 ## Webhook payload (POST, JSON)
 - `item` – id, name, boardId
 - `values` – preferredLocation, interviewerNotes, status, recommendationStatus,
-  meetingSummaryNewFiles [{name, mimeType, size, base64}], meetingSummaryExistingFiles [{assetId, name, url}]
+  meetingSummaryNewFiles [{name, mimeType, size, base64}] (at most one file: the summary uploaded in this submission)
+- `status` is set automatically: "Updated by interviewer" when a file is uploaded, otherwise "Reviewed – no update needed"
 - `columns` – keyed by column id, each with title, value, previous, changed
 - `mondayColumnValues` – JSON string ready for change_multiple_column_values (text + status columns)
 
-Uploaded files are sent as base64; total upload is capped at 3 MB (Vercel body limit).
+The uploaded file is sent as base64 and capped at 3 MB (Vercel body limit).

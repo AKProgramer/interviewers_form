@@ -27,16 +27,13 @@ module.exports = async (req, res) => {
   if (!/^\d+$/.test(itemId)) return res.status(400).json({ error: 'Missing item id.' });
 
   const c = CONFIG.columns;
-  const status = str(body.status, 200);
   const recommendation = str(body.recommendation, 200);
-  if (status && !c.status.options.includes(status)) {
-    return res.status(400).json({ error: `"${status}" is not a valid ${c.status.title} value.` });
-  }
   if (recommendation && !c.recommendation.options.includes(recommendation)) {
     return res.status(400).json({ error: `"${recommendation}" is not a valid ${c.recommendation.title} value.` });
   }
 
   const newFiles = Array.isArray(body.newFiles) ? body.newFiles : [];
+  if (newFiles.length > 1) return res.status(400).json({ error: 'Upload one summary file only.' });
   let total = 0;
   const cleanFiles = [];
   for (const f of newFiles) {
@@ -53,6 +50,9 @@ module.exports = async (req, res) => {
   if (total > MAX_TOTAL_FILE_BYTES) {
     return res.status(413).json({ error: 'Files are too large. Keep the total under 3 MB.' });
   }
+
+  // Status always follows the upload, whatever the client sent.
+  const status = cleanFiles.length ? c.status.auto.withFile : c.status.auto.withoutFile;
 
   try {
     // Re-read the item so the webhook gets trustworthy previous values.
@@ -83,7 +83,6 @@ module.exports = async (req, res) => {
       [c.meetingSummary.id]: {
         columnId: c.meetingSummary.id,
         title: c.meetingSummary.title,
-        existingFiles: prev.meetingSummaryFiles,
         newFiles: cleanFiles,
         changed: cleanFiles.length > 0,
       },
@@ -106,8 +105,7 @@ module.exports = async (req, res) => {
         interviewerNotes: next.interviewerNotes,
         status: next.status,
         recommendationStatus: next.recommendation,
-        meetingSummaryNewFiles: cleanFiles,
-        meetingSummaryExistingFiles: prev.meetingSummaryFiles,
+        meetingSummaryNewFiles: cleanFiles, // 0 or 1 file: only the summary uploaded in this submission
       },
       columns,
       mondayColumnValues,
@@ -123,7 +121,7 @@ module.exports = async (req, res) => {
       console.error('Webhook error', hook.status, text);
       return res.status(502).json({ error: `The webhook rejected the submission (HTTP ${hook.status}).` });
     }
-    return res.status(200).json({ ok: true });
+    return res.status(200).json({ ok: true, status });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: 'Submission failed: ' + err.message });
