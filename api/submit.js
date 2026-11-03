@@ -1,0 +1,131 @@
+const { CONFIG, loadMainItem } = require('./_monday');
+
+// Vercel serverless request bodies are capped at ~4.5 MB; base64 adds ~33%.
+const MAX_TOTAL_FILE_BYTES = 3 * 1024 * 1024;
+
+function str(v, max = 5000) {
+  return typeof v === 'string' ? v.slice(0, max) : '';
+}
+
+module.exports = async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  if (req.method !== 'POST') {
+    res.setHeader('Allow', 'POST');
+    return res.status(405).json({ error: 'Use POST.' });
+  }
+
+  const webhookUrl = process.env.WEBHOOK_URL;
+  if (!webhookUrl) return res.status(500).json({ error: 'WEBHOOK_URL is not configured.' });
+
+  let body = req.body;
+  if (typeof body === 'string') {
+    try { body = JSON.parse(body); } catch { return res.status(400).json({ error: 'Invalid JSON.' }); }
+  }
+  body = body || {};
+
+  const itemId = String(body.itemId || '').trim();
+  if (!/^\d+$/.test(itemId)) return res.status(400).json({ error: 'Missing item id.' });
+
+  const c = CONFIG.columns;
+  const status = str(body.status, 200);
+  const recommendation = str(body.recommendation, 200);
+  if (status && !c.status.options.includes(status)) {
+    return res.status(400).json({ error: `"${status}" is not a valid ${c.status.title} value.` });
+  }
+  if (recommendation && !c.recommendation.options.includes(recommendation)) {
+    return res.status(400).json({ error: `"${recommendation}" is not a valid ${c.recommendation.title} value.` });
+  }
+
+  const newFiles = Array.isArray(body.newFiles) ? body.newFiles : [];
+  let total = 0;
+  const cleanFiles = [];
+  for (const f of newFiles) {
+    if (!f || typeof f.data !== 'string' || !f.name) continue;
+    const bytes = Math.floor((f.data.length * 3) / 4);
+    total += bytes;
+    cleanFiles.push({
+      name: str(f.name, 255),
+      mimeType: str(f.type, 200) || 'application/octet-stream',
+      size: bytes,
+      base64: f.data,
+    });
+  }
+  if (total > MAX_TOTAL_FILE_BYTES) {
+    return res.status(413).json({ error: 'Files are too large. Keep the total under 3 MB.' });
+  }
+
+  try {
+    // Re-read the item so the webhook gets trustworthy previous values.
+    const item = await loadMainItem(itemId);
+    if (!item) return res.status(404).json({ error: 'Item not found on the Main Volunteers Board.' });
+    const prev = item.fields;
+
+    const next = {
+      preferredLocation: str(body.preferredLocation, 2000),
+      interviewerNotes: str(body.interviewerNotes, 2000),
+      status,
+      recommendation,
+    };
+
+    const entry = (key, title, id) => ({
+      columnId: id,
+      title,
+      value: next[key],
+      previous: prev[key],
+      changed: next[key] !== prev[key],
+    });
+
+    const columns = {
+      [c.preferredLocation.id]: entry('preferredLocation', c.preferredLocation.title, c.preferredLocation.id),
+      [c.interviewerNotes.id]: entry('interviewerNotes', c.interviewerNotes.title, c.interviewerNotes.id),
+      [c.status.id]: entry('status', c.status.title, c.status.id),
+      [c.recommendation.id]: entry('recommendation', c.recommendation.title, c.recommendation.id),
+      [c.meetingSummary.id]: {
+        columnId: c.meetingSummary.id,
+        title: c.meetingSummary.title,
+        existingFiles: prev.meetingSummaryFiles,
+        newFiles: cleanFiles,
+        changed: cleanFiles.length > 0,
+      },
+    };
+
+    // Ready to drop into monday's change_multiple_column_values (files must be uploaded separately).
+    const mondayColumnValues = JSON.stringify({
+      [c.preferredLocation.id]: next.preferredLocation,
+      [c.interviewerNotes.id]: next.interviewerNotes,
+      [c.status.id]: next.status ? { label: next.status } : null,
+      [c.recommendation.id]: next.recommendation ? { label: next.recommendation } : null,
+    });
+
+    const payload = {
+      event: 'interviewer_form_submitted',
+      submittedAt: new Date().toISOString(),
+      item: { id: item.id, name: item.name, boardId: item.boardId },
+      values: {
+        preferredLocation: next.preferredLocation,
+        interviewerNotes: next.interviewerNotes,
+        status: next.status,
+        recommendationStatus: next.recommendation,
+        meetingSummaryNewFiles: cleanFiles,
+        meetingSummaryExistingFiles: prev.meetingSummaryFiles,
+      },
+      columns,
+      mondayColumnValues,
+    };
+
+    const hook = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!hook.ok) {
+      const text = await hook.text().catch(() => '');
+      console.error('Webhook error', hook.status, text);
+      return res.status(502).json({ error: `The webhook rejected the submission (HTTP ${hook.status}).` });
+    }
+    return res.status(200).json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Submission failed: ' + err.message });
+  }
+};

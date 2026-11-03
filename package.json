@@ -1,0 +1,7 @@
+{
+  "name": "interviewer-review-form",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Interviewer review form for the Main Volunteers Board (monday.com), deployable to Vercel",
+  "engines": { "node": ">=18" }
+}

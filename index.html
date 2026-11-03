@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Interview review</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #edf1ee;
+    --surface: #ffffff;
+    --ink: #1f2b29;
+    --muted: #5e6b68;
+    --line: #d3dcd7;
+    --accent: #2f6b5e;
+    --accent-ink: #ffffff;
+    --accent-soft: #dcebe6;
+    --danger: #b3261e;
+    --radius-lg: 14px;
+    --radius-sm: 8px;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #121817;
+      --surface: #1b2321;
+      --ink: #e5ece9;
+      --muted: #9aa7a3;
+      --line: #2c3835;
+      --accent: #74b8a7;
+      --accent-ink: #0e1514;
+      --accent-soft: #233631;
+      --danger: #f2a49d;
+      color-scheme: dark;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Assistant", "Segoe UI", Arial, sans-serif;
+    font-size: 17px;
+    line-height: 1.5;
+    padding: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px);
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 32px 20px 64px; }
+
+  header.page { margin-bottom: 28px; }
+  header.page p { margin: 0; color: var(--muted); font-size: 15px; }
+  header.page h1 {
+    margin: 4px 0 0;
+    font-size: clamp(34px, 6vw, 56px);
+    line-height: 1.05;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+
+  .grid { display: grid; gap: 24px; grid-template-columns: 1fr; }
+  @media (min-width: 960px) {
+    .grid { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); align-items: start; }
+    .form-panel { position: sticky; top: 20px; }
+  }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+  }
+  .panel h2 { margin: 0 0 4px; font-size: 22px; font-weight: 700; }
+  .panel .sub { margin: 0 0 20px; color: var(--muted); font-size: 15px; }
+
+  .field { margin-bottom: 20px; }
+  .field > label, .field > .label { display: block; font-weight: 600; margin-bottom: 6px; }
+  input[type=text], textarea {
+    width: 100%;
+    font: inherit;
+    color: var(--ink);
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+  }
+  textarea { min-height: 140px; resize: vertical; }
+  input:focus-visible, textarea:focus-visible, button:focus-visible, .seg input:focus-visible + span, a:focus-visible {
+    outline: 3px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .seg { display: flex; flex-wrap: wrap; gap: 8px; }
+  .seg label { cursor: pointer; }
+  .seg input { position: absolute; opacity: 0; pointer-events: none; }
+  .seg span {
+    display: inline-block;
+    padding: 8px 14px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--bg);
+    font-weight: 500;
+  }
+  .seg input:checked + span { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .seg .clear span { color: var(--muted); }
+
+  .files { list-style: none; margin: 0 0 10px; padding: 0; }
+  .files li { padding: 6px 0; border-bottom: 1px dashed var(--line); }
+  .files a { color: var(--accent); }
+  .hint { font-size: 14px; color: var(--muted); }
+
+  button.primary {
+    width: 100%;
+    font: inherit;
+    font-weight: 700;
+    font-size: 18px;
+    padding: 14px;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: var(--accent);
+    color: var(--accent-ink);
+    cursor: pointer;
+  }
+  button.primary[disabled] { opacity: .6; cursor: progress; }
+  .msg { margin-top: 12px; font-weight: 600; }
+  .msg.err { color: var(--danger); }
+  .msg.ok { color: var(--accent); }
+
+  .tasks { list-style: none; margin: 0; padding: 0; }
+  .task { padding: 18px 0; border-top: 1px solid var(--line); }
+  .task:first-child { border-top: 0; padding-top: 0; }
+  .task-head { display: flex; gap: 12px; align-items: baseline; justify-content: space-between; flex-wrap: wrap; }
+  .task-head h3 { margin: 0; font-size: 19px; font-weight: 700; }
+  .pill {
+    font-size: 14px; font-weight: 600; padding: 2px 10px; border-radius: 999px;
+    color: #fff; background: #8a9692; white-space: nowrap;
+  }
+  .pill.empty { background: transparent; color: var(--muted); border: 1px solid var(--line); }
+  dl.meta { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; margin: 10px 0 0; font-size: 15px; }
+  dl.meta dt { color: var(--muted); }
+  dl.meta dd { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .count { color: var(--muted); font-weight: 500; }
+
+  .state { padding: 48px 24px; text-align: center; }
+  .state h2 { margin: 0 0 8px; }
+  .skeleton { color: var(--muted); }
+
+  .done { text-align: center; padding: 40px 12px; }
+  .done h2 { font-size: 26px; margin: 0 0 6px; }
+</style>
+</head>
+<body>
+<div class="wrap" id="app">
+  <div class="state skeleton">Loading the interview details…</div>
+</div>
+
+<script>
+(function () {
+  const app = document.getElementById('app');
+  const params = new URLSearchParams(location.search);
+  const itemId = (params.get('itemId') || params.get('item_id') || params.get('id') || '').trim();
+  const MAX_FILE_BYTES = 3 * 1024 * 1024;
+
+  const esc = (s) => String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  const dash = (s) => (s && String(s).trim()) ? esc(s) : '—';
+
+  function showState(title, text) {
+    app.innerHTML = `<div class="panel state"><h2>${esc(title)}</h2><p class="hint">${esc(text)}</p></div>`;
+  }
+
+  if (!/^\d+$/.test(itemId)) {
+    showState('This link is missing an item', 'Open the link from monday.com, or add ?itemId= followed by the item number to the address.');
+    return;
+  }
+
+  fetch('/api/item?itemId=' + encodeURIComponent(itemId))
+    .then(async (r) => {
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(data.error || 'The item could not be loaded.');
+      return data;
+    })
+    .then(render)
+    .catch((e) => showState('The form could not load', e.message));
+
+  function segment(name, options, current) {
+    const opts = options.map((o) => `
+      <label><input type="radio" name="${name}" value="${esc(o)}" ${o === current ? 'checked' : ''}><span>${esc(o)}</span></label>`).join('');
+    return `<div class="seg" role="radiogroup">${opts}
+      <label class="clear"><input type="radio" name="${name}" value="" ${!current ? 'checked' : ''}><span>Not set</span></label></div>`;
+  }
+
+  function fileList(files) {
+    if (!files || !files.length) return '';
+    return files.map((f) => `<a href="${esc(f.url)}" target="_blank" rel="noopener" dir="auto">${esc(f.name)}</a>`).join('<br>');
+  }
+
+  function taskHtml(t) {
+    const pill = t.status
+      ? `<span class="pill" style="background:${esc(t.statusColor || '#8a9692')}">${esc(t.status)}</span>`
+      : `<span class="pill empty">No status</span>`;
+    return `<li class="task">
+      <div class="task-head"><h3 dir="auto">${esc(t.name)}</h3>${pill}</div>
+      <dl class="meta">
+        <dt>Person in charge</dt><dd dir="auto">${dash(t.personInCharge)}</dd>
+        <dt>Volunteer</dt><dd dir="auto">${dash(t.linkedVolunteer)}</dd>
+        <dt>Date</dt><dd>${dash(t.date)}</dd>
+        <dt>Description</dt><dd dir="auto">${dash(t.description)}</dd>
+        <dt>Comments</dt><dd dir="auto">${dash(t.comments)}</dd>
+        <dt>Files</dt><dd>${fileList(t.files) || '—'}</dd>
+      </dl>
+    </li>`;
+  }
+
+  function render(data) {
+    const f = data.fields, m = data.meta, titles = m.titles;
+    document.title = 'Interview review: ' + data.item.name;
+
+    app.innerHTML = `
+      <header class="page">
+        <p>Interview review for item ${esc(data.item.id)}</p>
+        <h1 dir="auto">${esc(data.item.name)}</h1>
+      </header>
+      <div class="grid">
+        <section class="panel form-panel" id="formPanel">
+          <h2>Your review</h2>
+          <p class="sub">Check the details, change what’s needed, then save.</p>
+          <form id="reviewForm" novalidate>
+            <div class="field">
+              <label for="preferredLocation">${esc(titles.preferredLocation)}</label>
+              <input type="text" id="preferredLocation" dir="auto" value="${esc(f.preferredLocation)}">
+            </div>
+            <div class="field">
+              <label for="interviewerNotes">${esc(titles.interviewerNotes)}</label>
+              <textarea id="interviewerNotes" dir="auto">${esc(f.interviewerNotes)}</textarea>
+            </div>
+            <div class="field">
+              <span class="label" id="statusLbl">${esc(titles.status)}</span>
+              ${segment('status', m.statusOptions, f.status)}
+            </div>
+            <div class="field">
+              <span class="label">${esc(titles.recommendation)}</span>
+              ${segment('recommendation', m.recommendationOptions, f.recommendation)}
+            </div>
+            <div class="field">
+              <label for="summaryFiles" dir="auto">${esc(titles.meetingSummary)}</label>
+              <ul class="files">${(f.meetingSummaryFiles || []).map((x) =>
+                `<li><a href="${esc(x.url)}" target="_blank" rel="noopener" dir="auto">${esc(x.name)}</a></li>`).join('') ||
+                '<li class="hint">No file attached yet.</li>'}</ul>
+              <input type="file" id="summaryFiles" multiple>
+              <div class="hint">Add a new or updated summary. Up to 3 MB in total.</div>
+            </div>
+            <button type="submit" class="primary" id="saveBtn">Save review</button>
+            <div class="msg" id="msg" role="status" aria-live="polite"></div>
+          </form>
+        </section>
+        <section class="panel">
+          <h2>Tasks <span class="count">(${data.tasks.length})</span></h2>
+          <p class="sub">Linked tasks from the task list. These are for reference and can’t be edited here.</p>
+          ${data.tasks.length ? `<ul class="tasks">${data.tasks.map(taskHtml).join('')}</ul>` : '<p class="hint">No tasks are linked to this volunteer yet.</p>'}
+        </section>
+      </div>`;
+
+    document.getElementById('reviewForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      submit(data.item.id);
+    });
+  }
+
+  function readFile(file) {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve({ name: file.name, type: file.type, data: String(r.result).split(',')[1] || '' });
+      r.onerror = () => reject(new Error('Could not read ' + file.name));
+      r.readAsDataURL(file);
+    });
+  }
+
+  async function submit(id) {
+    const btn = document.getElementById('saveBtn');
+    const msg = document.getElementById('msg');
+    msg.className = 'msg'; msg.textContent = '';
+
+    const files = Array.from(document.getElementById('summaryFiles').files || []);
+    const total = files.reduce((s, f) => s + f.size, 0);
+    if (total > MAX_FILE_BYTES) {
+      msg.className = 'msg err';
+      msg.textContent = 'The selected files are larger than 3 MB. Choose smaller files and save again.';
+      return;
+    }
+
+    btn.disabled = true; btn.textContent = 'Saving…';
+    try {
+      const newFiles = await Promise.all(files.map(readFile));
+      const val = (n) => (document.querySelector(`input[name="${n}"]:checked`) || {}).value || '';
+      const res = await fetch('/api/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          itemId: id,
+          preferredLocation: document.getElementById('preferredLocation').value,
+          interviewerNotes: document.getElementById('interviewerNotes').value,
+          status: val('status'),
+          recommendation: val('recommendation'),
+          newFiles,
+        }),
+      });
+      const out = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(out.error || 'The review could not be saved.');
+
+      document.getElementById('formPanel').innerHTML =
+        '<div class="done"><h2>Review saved</h2><p class="hint">Thanks. Your changes were sent and will appear on monday.com shortly.</p></div>';
+    } catch (e) {
+      msg.className = 'msg err';
+      msg.textContent = e.message + ' Try again.';
+      btn.disabled = false; btn.textContent = 'Save review';
+    }
+  }
+})();
+</script>
+</body>
+</html>
