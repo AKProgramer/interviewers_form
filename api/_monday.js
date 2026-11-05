@@ -4,19 +4,22 @@ const CONFIG = {
   mainBoardId: process.env.MAIN_BOARD_ID || '5101747214',
   columns: {
     preferredLocation: { id: 'text_mm8rck7c', title: 'Preferred Location' },
-    interviewerNotes: { id: 'text_mm8rcbfm', title: "Interviewer's Notes" },
+    interviewerNotes: { id: 'long_text_mm83m27z', title: "Interviewer's Notes" },
     meetingSummary: { id: 'file_mm7fxnnf', title: 'סיכום פגישה' },
     status: {
       id: 'color_mm8rrwba',
       title: 'Status',
       options: ['Reviewed – no update needed', 'Updated by interviewer'],
-      // Not chosen by the interviewer: set from whether a new meeting summary file was uploaded.
-      auto: { withFile: 'Updated by interviewer', withoutFile: 'Reviewed – no update needed' },
     },
     recommendation: {
       id: 'color_mm8r7s7g',
       title: 'Recommendation Status',
       options: ['See Notes', 'Recommended'],
+    },
+    garin: {
+      id: 'color_mm84zrka',
+      title: "Gar'in",
+      options: ['מצפה רמון', 'נתיבות', 'צפת', 'מטולה', 'קריית שמונה', 'בית שאן', 'ערד', 'חצור'],
     },
     tasks: { id: 'board_relation_mm7y2gqg', title: 'קישור לטבלת משימות' },
   },
@@ -68,7 +71,7 @@ query ($id: [ID!]) {
     id
     name
     board { id }
-    column_values(ids: ["text_mm8rck7c","text_mm8rcbfm","color_mm8rrwba","color_mm8r7s7g","board_relation_mm7y2gqg"]) {
+    column_values(ids: ["text_mm8rck7c","long_text_mm83m27z","color_mm8rrwba","color_mm8r7s7g","color_mm84zrka","board_relation_mm7y2gqg"]) {
       id
       type
       text
@@ -117,6 +120,7 @@ async function loadMainItem(itemId) {
       interviewerNotes: cv(item, c.interviewerNotes.id).text || '',
       status: cv(item, c.status.id).label || '',
       recommendation: cv(item, c.recommendation.id).label || '',
+      garin: cv(item, c.garin.id).label || '',
       meetingSummaryFiles: (item.assets || []).map((a) => ({
         assetId: a.id,
         name: a.name,

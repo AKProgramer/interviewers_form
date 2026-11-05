@@ -150,15 +150,6 @@
   input[type=text]:focus, input[type=search]:focus, textarea:focus { background: var(--surface); border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }
   textarea { min-height: 150px; resize: vertical; }
 
-  .label-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
-  .label-row label { font-weight: 700; font-size: 16px; }
-  .auto-badge {
-    display: inline-flex; align-items: center; gap: 5px;
-    padding: 2px 10px; border-radius: 999px;
-    background: var(--accent-soft); color: var(--accent);
-    font-size: 13px; font-weight: 700;
-  }
-  .auto-badge svg.i { width: 14px; height: 14px; }
   .select { position: relative; }
   .select select {
     width: 100%;
@@ -180,10 +171,6 @@
     transform: translateY(-70%) rotate(45deg);
     pointer-events: none;
   }
-  .select select:disabled { cursor: default; opacity: 1; color: var(--ink); font-weight: 600; background: var(--accent-soft); border-color: transparent; }
-  .select.locked::after { display: none; }
-  .select.flash select { animation: flash .9s ease-out; }
-  @keyframes flash { from { box-shadow: 0 0 0 4px var(--accent); } to { box-shadow: 0 0 0 0 transparent; } }
   .field .hint { margin: 6px 0 0; }
 
   .drop {
@@ -445,7 +432,6 @@
     eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
     check: '<path d="M5 12.5 10 17l9-10"/>',
     reload: '<path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/>',
-    auto: '<path d="M13 3 5 14h6l-1 7 8-11h-6z"/>',
     search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
     file: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/>',
   };
@@ -650,10 +636,10 @@
     .then(render)
     .catch((e) => showState('The form could not load', e.message));
 
-  function selectHtml(id, options, current, { locked, blank } = {}) {
-    const opts = (blank ? [`<option value="">${esc(blank)}</option>`] : [])
+  function selectHtml(id, options, current) {
+    const opts = [`<option value="">Not set</option>`]
       .concat(options.map((o) => `<option value="${esc(o)}" ${o === current ? 'selected' : ''}>${esc(o)}</option>`));
-    return `<div class="select ${locked ? 'locked' : ''}"><select id="${id}" ${locked ? 'disabled' : ''}>${opts.join('')}</select></div>`;
+    return `<div class="select"><select id="${id}" dir="auto">${opts.join('')}</select></div>`;
   }
 
   // One file per row; clicking the name or "View" opens it in the viewer dialog.
@@ -755,7 +741,6 @@
 
   function render(data) {
     const f = data.fields, m = data.meta, titles = m.titles;
-    statusAuto = m.statusAuto;
     document.title = 'Interview review: ' + data.item.name;
     const summaryFiles = (f.meetingSummaryFiles || []).map((x) => track(remoteFile(x)));
     const chip = (label, value) => `<span class="chip">${esc(label)}: <b dir="auto">${value ? esc(value) : 'Not set'}</b></span>`;
@@ -767,6 +752,7 @@
         <div class="chips">
           ${chip(titles.status, f.status)}
           ${chip(titles.recommendation, f.recommendation)}
+          ${chip(titles.garin, f.garin)}
           <span class="chip"><b>${data.tasks.length}</b> linked task${data.tasks.length === 1 ? '' : 's'}</span>
         </div>
       </header>
@@ -783,12 +769,20 @@
               <input type="text" id="preferredLocation" dir="auto" value="${esc(f.preferredLocation)}">
             </div>
             <div class="field">
+              <label for="garin">${esc(titles.garin)}</label>
+              ${selectHtml('garin', m.garinOptions, f.garin)}
+            </div>
+            <div class="field">
               <label for="interviewerNotes">${esc(titles.interviewerNotes)}</label>
               <textarea id="interviewerNotes" dir="auto">${esc(f.interviewerNotes)}</textarea>
             </div>
             <div class="field">
+              <label for="status">${esc(titles.status)}</label>
+              ${selectHtml('status', m.statusOptions, f.status)}
+            </div>
+            <div class="field">
               <label for="recommendation">${esc(titles.recommendation)}</label>
-              ${selectHtml('recommendation', m.recommendationOptions, f.recommendation, { blank: 'Not set' })}
+              ${selectHtml('recommendation', m.recommendationOptions, f.recommendation)}
             </div>
             <div class="field">
               <span class="label" dir="auto">${esc(titles.meetingSummary)}${summaryFiles.length ? `<span class="count">${summaryFiles.length}</span>` : ''}</span>
@@ -802,15 +796,6 @@
                 <input type="file" id="summaryFile">
               </label>
               <ul class="file-list" id="pendingList"></ul>
-            </div>
-            <div class="field">
-              <div class="label-row">
-                <label for="status">${esc(titles.status)}</label>
-                <span class="auto-badge">${icon('auto')}Set automatically</span>
-              </div>
-              ${selectHtml('status', m.statusOptions, statusAuto.withoutFile, { locked: true })}
-              <p class="hint" dir="auto">Picked from the ${esc(titles.meetingSummary)} upload above: adding a file saves it as
-                “${esc(statusAuto.withFile)}”, otherwise it’s saved as “${esc(statusAuto.withoutFile)}”.</p>
             </div>
             </div>
             <div class="form-actions">
@@ -851,8 +836,6 @@
 
   // ---------- New summary upload (one file) ----------
   let newFile = null;
-  let statusAuto = null;
-  const autoStatus = () => (newFile ? statusAuto.withFile : statusAuto.withoutFile);
   function setupUploads() {
     const input = document.getElementById('summaryFile');
     const drop = document.getElementById('drop');
@@ -882,15 +865,6 @@
     document.getElementById('pendingList').innerHTML = f ? fileRow(f, `${formatSize(f.size)} · new, not saved yet`, `
       <button type="button" class="icon-btn view" data-preview="${esc(f.key)}">${icon('eye')}<span class="lbl">View</span></button>
       <button type="button" class="icon-btn ghost" data-remove aria-label="Remove ${esc(f.name)}">${icon('close')}</button>`) : '';
-
-    const status = document.getElementById('status');
-    if (status.value !== autoStatus()) {
-      status.value = autoStatus();
-      const wrap = status.parentElement;
-      wrap.classList.remove('flash');
-      void wrap.offsetWidth; // restart the animation
-      wrap.classList.add('flash');
-    }
   }
 
   function readFile(file) {
@@ -914,6 +888,7 @@
     }
 
     btn.disabled = true; btn.textContent = 'Saving…';
+    const status = document.getElementById('status').value;
     try {
       const newFiles = newFile ? [await readFile(newFile.file)] : [];
       const res = await fetch('/api/submit', {
@@ -923,7 +898,9 @@
           itemId: id,
           preferredLocation: document.getElementById('preferredLocation').value,
           interviewerNotes: document.getElementById('interviewerNotes').value,
+          status,
           recommendation: document.getElementById('recommendation').value,
+          garin: document.getElementById('garin').value,
           newFiles,
         }),
       });
@@ -935,7 +912,7 @@
           <span class="tick">${icon('check')}</span>
           <h2>Review saved</h2>
           <p class="hint">Thanks. Your changes were sent to monday.com. They can take a minute to show up, so if the form looks unchanged, wait a moment and reload again.</p>
-          <div class="chips saved-status" style="justify-content:center"><span class="chip">Status: <b>${esc(out.status || autoStatus())}</b></span></div>
+          <div class="chips saved-status" style="justify-content:center"><span class="chip">Status: <b>${esc(status || 'Not set')}</b></span></div>
           <button type="button" class="primary" id="backBtn">${icon('reload')}Back to the form</button>
         </div>`;
       document.getElementById('backBtn').addEventListener('click', () => location.reload());

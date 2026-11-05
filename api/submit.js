@@ -27,9 +27,13 @@ module.exports = async (req, res) => {
   if (!/^\d+$/.test(itemId)) return res.status(400).json({ error: 'Missing item id.' });
 
   const c = CONFIG.columns;
+  const status = str(body.status, 200);
   const recommendation = str(body.recommendation, 200);
-  if (recommendation && !c.recommendation.options.includes(recommendation)) {
-    return res.status(400).json({ error: `"${recommendation}" is not a valid ${c.recommendation.title} value.` });
+  const garin = str(body.garin, 200);
+  for (const [value, col] of [[status, c.status], [recommendation, c.recommendation], [garin, c.garin]]) {
+    if (value && !col.options.includes(value)) {
+      return res.status(400).json({ error: `"${value}" is not a valid ${col.title} value.` });
+    }
   }
 
   const newFiles = Array.isArray(body.newFiles) ? body.newFiles : [];
@@ -51,9 +55,6 @@ module.exports = async (req, res) => {
     return res.status(413).json({ error: 'Files are too large. Keep the total under 3 MB.' });
   }
 
-  // Status always follows the upload, whatever the client sent.
-  const status = cleanFiles.length ? c.status.auto.withFile : c.status.auto.withoutFile;
-
   try {
     // Re-read the item so the webhook gets trustworthy previous values.
     const item = await loadMainItem(itemId);
@@ -62,9 +63,10 @@ module.exports = async (req, res) => {
 
     const next = {
       preferredLocation: str(body.preferredLocation, 2000),
-      interviewerNotes: str(body.interviewerNotes, 2000),
+      interviewerNotes: str(body.interviewerNotes, 20000), // long text column, not capped at 2000 like text columns
       status,
       recommendation,
+      garin,
     };
 
     const entry = (key, title, id) => ({
@@ -80,6 +82,7 @@ module.exports = async (req, res) => {
       [c.interviewerNotes.id]: entry('interviewerNotes', c.interviewerNotes.title, c.interviewerNotes.id),
       [c.status.id]: entry('status', c.status.title, c.status.id),
       [c.recommendation.id]: entry('recommendation', c.recommendation.title, c.recommendation.id),
+      [c.garin.id]: entry('garin', c.garin.title, c.garin.id),
       [c.meetingSummary.id]: {
         columnId: c.meetingSummary.id,
         title: c.meetingSummary.title,
@@ -91,9 +94,10 @@ module.exports = async (req, res) => {
     // Ready to drop into monday's change_multiple_column_values (files must be uploaded separately).
     const mondayColumnValues = JSON.stringify({
       [c.preferredLocation.id]: next.preferredLocation,
-      [c.interviewerNotes.id]: next.interviewerNotes,
+      [c.interviewerNotes.id]: { text: next.interviewerNotes },
       [c.status.id]: next.status ? { label: next.status } : null,
       [c.recommendation.id]: next.recommendation ? { label: next.recommendation } : null,
+      [c.garin.id]: next.garin ? { label: next.garin } : null,
     });
 
     const payload = {
@@ -105,6 +109,7 @@ module.exports = async (req, res) => {
         interviewerNotes: next.interviewerNotes,
         status: next.status,
         recommendationStatus: next.recommendation,
+        garin: next.garin,
         meetingSummaryNewFiles: cleanFiles, // 0 or 1 file: only the summary uploaded in this submission
       },
       columns,
@@ -121,7 +126,7 @@ module.exports = async (req, res) => {
       console.error('Webhook error', hook.status, text);
       return res.status(502).json({ error: `The webhook rejected the submission (HTTP ${hook.status}).` });
     }
-    return res.status(200).json({ ok: true, status });
+    return res.status(200).json({ ok: true });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: 'Submission failed: ' + err.message });

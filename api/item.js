@@ -27,10 +27,11 @@ module.exports = async (req, res) => {
           meetingSummary: c.meetingSummary.title,
           status: c.status.title,
           recommendation: c.recommendation.title,
+          garin: c.garin.title,
         },
         statusOptions: c.status.options,
-        statusAuto: c.status.auto,
         recommendationOptions: c.recommendation.options,
+        garinOptions: c.garin.options,
         taskStatuses: Object.entries(CONFIG.taskStatusColors).map(([label, color]) => ({ label, color })),
       },
     });
