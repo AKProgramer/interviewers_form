@@ -1,4 +1,4 @@
-const { CONFIG, loadMainItem, loadTasks } = require('./_monday');
+const { CONFIG, loadMainItem, loadTasks, splitRejection } = require('./_monday');
 
 module.exports = async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
@@ -15,14 +15,14 @@ module.exports = async (req, res) => {
     }
     const tasks = await loadTasks(item.linkedTaskIds);
     const c = CONFIG.columns;
+    const rejection = splitRejection(item.fields.interviewerNotes);
 
     return res.status(200).json({
       item: { id: item.id, name: item.name, boardId: item.boardId },
-      fields: item.fields,
+      fields: { ...item.fields, interviewerNotes: rejection.notes, rejectionReasons: rejection.reasons },
       tasks,
       meta: {
         titles: {
-          preferredLocation: c.preferredLocation.title,
           interviewerNotes: c.interviewerNotes.title,
           meetingSummary: c.meetingSummary.title,
           status: c.status.title,
@@ -32,6 +32,7 @@ module.exports = async (req, res) => {
         statusOptions: c.status.options,
         recommendationOptions: c.recommendation.options,
         garinOptions: c.garin.options,
+        rejectionReasons: CONFIG.rejectionReasons,
         taskStatuses: Object.entries(CONFIG.taskStatusColors).map(([label, color]) => ({ label, color })),
       },
     });

@@ -3,7 +3,7 @@
 const CONFIG = {
   mainBoardId: process.env.MAIN_BOARD_ID || '5101747214',
   columns: {
-    preferredLocation: { id: 'text_mm8rck7c', title: 'Preferred Location' },
+    interviewerName: { id: 'text_mm72jvzf', title: 'שם מראיין' }, // shown only; the form doesn't change it
     interviewerNotes: { id: 'long_text_mm83m27z', title: "Interviewer's Notes" },
     meetingSummary: { id: 'file_mm7fxnnf', title: 'סיכום פגישה' },
     status: {
@@ -23,6 +23,17 @@ const CONFIG = {
     },
     tasks: { id: 'board_relation_mm7y2gqg', title: 'קישור לטבלת משימות' },
   },
+  // Shown when the interviewer marks the volunteer as rejected; the picked ones are saved into Interviewer's Notes.
+  rejectionReasons: [
+    'Not a good fit for the program',
+    'Insufficient motivation or commitment',
+    'Availability does not match the required commitment',
+    'Does not meet eligibility requirements',
+    'Language barrier',
+    'Concerns from references or background check',
+    'Health or wellbeing concerns',
+    'Did not attend the interview',
+  ],
   // Task List board columns (Interviewer Name and Interview Date & Time mirrors are intentionally excluded)
   taskColumns: {
     personInCharge: 'multiple_person_mm7yg5bc',
@@ -71,7 +82,7 @@ query ($id: [ID!]) {
     id
     name
     board { id }
-    column_values(ids: ["text_mm8rck7c","long_text_mm83m27z","color_mm8rrwba","color_mm8r7s7g","color_mm84zrka","board_relation_mm7y2gqg"]) {
+    column_values(ids: ["text_mm72jvzf","long_text_mm83m27z","color_mm8rrwba","color_mm8r7s7g","color_mm84zrka","board_relation_mm7y2gqg"]) {
       id
       type
       text
@@ -116,7 +127,7 @@ async function loadMainItem(itemId) {
     name: item.name,
     boardId: item.board.id,
     fields: {
-      preferredLocation: cv(item, c.preferredLocation.id).text || '',
+      interviewerName: cv(item, c.interviewerName.id).text || '',
       interviewerNotes: cv(item, c.interviewerNotes.id).text || '',
       status: cv(item, c.status.id).label || '',
       recommendation: cv(item, c.recommendation.id).label || '',
@@ -186,4 +197,28 @@ async function findItemAsset(itemId, assetId) {
   return null;
 }
 
-module.exports = { CONFIG, mondayQuery, loadMainItem, loadTasks, findItemAsset };
+// Rejection reasons live in a block at the end of Interviewer's Notes (there is no column for them):
+//   Rejection reasons:
+//   - Language barrier
+const REJECTION_BLOCK = /(?:^|\n+)Rejection reasons:\n((?:- .*(?:\n|$))+)\s*$/;
+
+// Splits the notes into the interviewer's own text and the reasons saved by a previous submission.
+function splitRejection(notes) {
+  const text = String(notes || '');
+  const m = text.match(REJECTION_BLOCK);
+  if (!m) return { notes: text, reasons: [] };
+  return {
+    notes: text.slice(0, m.index),
+    reasons: m[1].split('\n').map((l) => l.replace(/^- /, '').trim()).filter(Boolean),
+  };
+}
+
+// Replaces any existing reasons block with the given reasons (none: the block is removed).
+function withRejection(notes, reasons) {
+  const base = splitRejection(notes).notes;
+  if (!reasons.length) return base;
+  const block = 'Rejection reasons:\n' + reasons.map((r) => '- ' + r).join('\n');
+  return base.trim() ? base.trimEnd() + '\n\n' + block : block;
+}
+
+module.exports = { CONFIG, mondayQuery, loadMainItem, loadTasks, findItemAsset, splitRejection, withRejection };

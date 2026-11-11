@@ -1,4 +1,4 @@
-const { CONFIG, loadMainItem } = require('./_monday');
+const { CONFIG, loadMainItem, withRejection } = require('./_monday');
 
 // Vercel serverless request bodies are capped at ~4.5 MB; base64 adds ~33%.
 const MAX_TOTAL_FILE_BYTES = 3 * 1024 * 1024;
@@ -36,6 +36,17 @@ module.exports = async (req, res) => {
     }
   }
 
+  const rejected = body.rejected === 'Yes' ? 'Yes' : 'No';
+  const pickedReasons = rejected === 'Yes' && Array.isArray(body.rejectionReasons) ? body.rejectionReasons : [];
+  const unknownReason = pickedReasons.find((r) => !CONFIG.rejectionReasons.includes(r));
+  if (unknownReason !== undefined) {
+    return res.status(400).json({ error: `"${unknownReason}" is not a valid rejection reason.` });
+  }
+  const rejectionReasons = CONFIG.rejectionReasons.filter((r) => pickedReasons.includes(r));
+  if (rejected === 'Yes' && !rejectionReasons.length) {
+    return res.status(400).json({ error: 'Choose at least one rejection reason.' });
+  }
+
   const newFiles = Array.isArray(body.newFiles) ? body.newFiles : [];
   if (newFiles.length > 1) return res.status(400).json({ error: 'Upload one summary file only.' });
   let total = 0;
@@ -62,8 +73,8 @@ module.exports = async (req, res) => {
     const prev = item.fields;
 
     const next = {
-      preferredLocation: str(body.preferredLocation, 2000),
-      interviewerNotes: str(body.interviewerNotes, 20000), // long text column, not capped at 2000 like text columns
+      // long text column, not capped at 2000 like text columns; the picked rejection reasons are appended
+      interviewerNotes: withRejection(str(body.interviewerNotes, 20000), rejectionReasons),
       status,
       recommendation,
       garin,
@@ -78,7 +89,6 @@ module.exports = async (req, res) => {
     });
 
     const columns = {
-      [c.preferredLocation.id]: entry('preferredLocation', c.preferredLocation.title, c.preferredLocation.id),
       [c.interviewerNotes.id]: entry('interviewerNotes', c.interviewerNotes.title, c.interviewerNotes.id),
       [c.status.id]: entry('status', c.status.title, c.status.id),
       [c.recommendation.id]: entry('recommendation', c.recommendation.title, c.recommendation.id),
@@ -93,7 +103,6 @@ module.exports = async (req, res) => {
 
     // Ready to drop into monday's change_multiple_column_values (files must be uploaded separately).
     const mondayColumnValues = JSON.stringify({
-      [c.preferredLocation.id]: next.preferredLocation,
       [c.interviewerNotes.id]: { text: next.interviewerNotes },
       [c.status.id]: next.status ? { label: next.status } : null,
       [c.recommendation.id]: next.recommendation ? { label: next.recommendation } : null,
@@ -105,8 +114,9 @@ module.exports = async (req, res) => {
       submittedAt: new Date().toISOString(),
       item: { id: item.id, name: item.name, boardId: item.boardId },
       values: {
-        preferredLocation: next.preferredLocation,
         interviewerNotes: next.interviewerNotes,
+        rejected,
+        rejectionReasons,
         status: next.status,
         recommendationStatus: next.recommendation,
         garin: next.garin,

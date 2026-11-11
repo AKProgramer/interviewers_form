@@ -77,6 +77,9 @@
     font-weight: 800;
     letter-spacing: -0.02em;
   }
+  .interviewer { display: flex; align-items: center; gap: 8px; margin: 0 0 14px; font-size: 18px; color: var(--muted); }
+  .interviewer b { color: var(--ink); font-weight: 700; }
+  .interviewer.missing b { color: var(--danger); }
   .chips { display: flex; flex-wrap: wrap; gap: 8px; }
   .chip {
     display: inline-flex; align-items: center; gap: 6px;
@@ -172,6 +175,20 @@
     pointer-events: none;
   }
   .field .hint { margin: 6px 0 0; }
+
+  fieldset.field { border: 0; padding: 0; margin-inline: 0; min-width: 0; }
+  .checks { display: grid; gap: 6px; }
+  .check {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 9px 12px;
+    border: 1px solid var(--line); border-radius: var(--radius-sm);
+    background: var(--surface-2);
+    font-size: 15px; cursor: pointer;
+    transition: border-color .15s, background .15s;
+  }
+  .check:hover { border-color: var(--line-strong); }
+  .check:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+  .check input { flex: none; width: 16px; height: 16px; margin: 3px 0 0; accent-color: var(--accent); }
 
   .drop {
     display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center;
@@ -434,6 +451,7 @@
     reload: '<path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/>',
     search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
     file: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/>',
+    user: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
   };
   const icon = (name) => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name]}</svg>`;
 
@@ -744,11 +762,15 @@
     document.title = 'Interview review: ' + data.item.name;
     const summaryFiles = (f.meetingSummaryFiles || []).map((x) => track(remoteFile(x)));
     const chip = (label, value) => `<span class="chip">${esc(label)}: <b dir="auto">${value ? esc(value) : 'Not set'}</b></span>`;
+    f.rejectionReasons = f.rejectionReasons || [];
+    const rejected = f.rejectionReasons.length > 0; // reasons saved earlier mean the volunteer was rejected
 
     app.innerHTML = `
       <header class="page">
         <p class="eyebrow">Interview review · item ${esc(data.item.id)}</p>
         <h1 dir="auto">${esc(data.item.name)}</h1>
+        <p class="interviewer ${f.interviewerName ? '' : 'missing'}">${icon('user')}Interviewer:
+          <b dir="auto">${f.interviewerName ? esc(f.interviewerName) : 'Not assigned'}</b></p>
         <div class="chips">
           ${chip(titles.status, f.status)}
           ${chip(titles.recommendation, f.recommendation)}
@@ -765,26 +787,6 @@
           <form id="reviewForm" novalidate>
             <div class="form-scroll">
             <div class="field">
-              <label for="preferredLocation">${esc(titles.preferredLocation)}</label>
-              <input type="text" id="preferredLocation" dir="auto" value="${esc(f.preferredLocation)}">
-            </div>
-            <div class="field">
-              <label for="garin">${esc(titles.garin)}</label>
-              ${selectHtml('garin', m.garinOptions, f.garin)}
-            </div>
-            <div class="field">
-              <label for="interviewerNotes">${esc(titles.interviewerNotes)}</label>
-              <textarea id="interviewerNotes" dir="auto">${esc(f.interviewerNotes)}</textarea>
-            </div>
-            <div class="field">
-              <label for="status">${esc(titles.status)}</label>
-              ${selectHtml('status', m.statusOptions, f.status)}
-            </div>
-            <div class="field">
-              <label for="recommendation">${esc(titles.recommendation)}</label>
-              ${selectHtml('recommendation', m.recommendationOptions, f.recommendation)}
-            </div>
-            <div class="field">
               <span class="label" dir="auto">${esc(titles.meetingSummary)}${summaryFiles.length ? `<span class="count">${summaryFiles.length}</span>` : ''}</span>
               ${summaryFiles.length
                 ? `<ul class="file-list existing">${summaryFiles.map(existingRow).join('')}</ul>`
@@ -796,6 +798,36 @@
                 <input type="file" id="summaryFile">
               </label>
               <ul class="file-list" id="pendingList"></ul>
+            </div>
+            <div class="field">
+              <label for="garin">${esc(titles.garin)}</label>
+              ${selectHtml('garin', m.garinOptions, f.garin)}
+            </div>
+            <div class="field">
+              <label for="interviewerNotes">${esc(titles.interviewerNotes)}</label>
+              <textarea id="interviewerNotes" dir="auto">${esc(f.interviewerNotes)}</textarea>
+            </div>
+            <div class="field">
+              <label for="rejected">Rejected?</label>
+              <div class="select"><select id="rejected">
+                <option value="No" ${rejected ? '' : 'selected'}>No</option>
+                <option value="Yes" ${rejected ? 'selected' : ''}>Yes</option>
+              </select></div>
+            </div>
+            <fieldset class="field" id="reasonsField" ${rejected ? '' : 'hidden'}>
+              <legend class="label">Rejection reasons</legend>
+              <div class="checks">${(m.rejectionReasons || []).map((r) => `
+                <label class="check"><input type="checkbox" name="rejectionReason" value="${esc(r)}" ${f.rejectionReasons.includes(r) ? 'checked' : ''}><span dir="auto">${esc(r)}</span></label>`).join('')}
+              </div>
+              <p class="hint">The selected reasons are added to ${esc(titles.interviewerNotes)} when you save.</p>
+            </fieldset>
+            <div class="field">
+              <label for="status">${esc(titles.status)}</label>
+              ${selectHtml('status', m.statusOptions, f.status)}
+            </div>
+            <div class="field">
+              <label for="recommendation">${esc(titles.recommendation)}</label>
+              ${selectHtml('recommendation', m.recommendationOptions, f.recommendation)}
             </div>
             </div>
             <div class="form-actions">
@@ -823,6 +855,11 @@
 
     setupUploads();
     if (data.tasks.length) setupTaskFilter(data.tasks);
+
+    const rejectedSelect = document.getElementById('rejected');
+    rejectedSelect.addEventListener('change', () => {
+      document.getElementById('reasonsField').hidden = rejectedSelect.value !== 'Yes';
+    });
 
     app.addEventListener('click', (e) => {
       const btn = e.target.closest('[data-preview]');
@@ -887,6 +924,16 @@
       return;
     }
 
+    const rejected = document.getElementById('rejected').value;
+    const rejectionReasons = rejected === 'Yes'
+      ? Array.from(document.querySelectorAll('input[name="rejectionReason"]:checked'), (c) => c.value)
+      : [];
+    if (rejected === 'Yes' && !rejectionReasons.length) {
+      msg.className = 'msg err';
+      msg.textContent = 'Choose at least one rejection reason, or set Rejected? to No.';
+      return;
+    }
+
     btn.disabled = true; btn.textContent = 'Saving…';
     const status = document.getElementById('status').value;
     try {
@@ -896,8 +943,9 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           itemId: id,
-          preferredLocation: document.getElementById('preferredLocation').value,
           interviewerNotes: document.getElementById('interviewerNotes').value,
+          rejected,
+          rejectionReasons,
           status,
           recommendation: document.getElementById('recommendation').value,
           garin: document.getElementById('garin').value,
